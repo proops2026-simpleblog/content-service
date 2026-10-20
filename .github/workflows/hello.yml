@@ -1,15 +1,24 @@
-name: Hello
+name: CI
 on: [push, workflow_dispatch]
 jobs:
-  hello:
+  lint:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Print context
+      - uses: actions/checkout@v4
+      - name: Lint
         run: |
-          echo "Triggered by: $GITHUB_ACTOR"
-          echo "Event:        $GITHUB_EVENT_NAME"
-          echo "Branch:       $GITHUB_REF_NAME"
-          echo "Commit:       $GITHUB_SHA"
-          echo "Repo:         $GITHUB_REPOSITORY"
-          echo "Project:      Simple Blog/CMS — content-service"
+          echo "Linting at $(date +%T)"
+          sleep 10
+          echo "Lint done"
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: |
+          echo "Testing at $(date +%T)"
+          sleep 10
+          echo "Test done"
