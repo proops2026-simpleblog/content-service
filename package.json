@@ -13,7 +13,6 @@
   "private": true,
   "dependencies": {
     "dotenv": "^16.4.5",
-    "fakefakefake-not-real": "^1.0.0",
     "express": "^4.19.2",
     "knex": "^3.1.0",
     "pg": "^8.12.0"
