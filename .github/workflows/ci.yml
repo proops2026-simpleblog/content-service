@@ -38,3 +38,24 @@ jobs:
       - run: npm ci
       - run: npm run migrate
       - run: npm test
+
+  # Q7 demo — throwaway random secret, proves masking. Remove before merge.
+  secrets-demo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Length only (correct pattern)
+        env:
+          DEMO_TOKEN: ${{ secrets.DEMO_TOKEN }}
+        run: echo "Token configured, length=${#DEMO_TOKEN}"
+
+      - name: Direct echo via env (should be masked)
+        env:
+          DEMO_TOKEN: ${{ secrets.DEMO_TOKEN }}
+        run: echo "value=$DEMO_TOKEN"
+
+      - name: Direct expression interpolation (course example; anti-pattern)
+        run: echo "value=${{ secrets.DEMO_TOKEN }}"
+
+      - name: Not mapped into env = not available
+        run: echo "DEMO_TOKEN in env? ${DEMO_TOKEN:-<unset>}"
