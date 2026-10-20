@@ -1,14 +1,40 @@
 name: CI
 on: [push, workflow_dispatch]
+
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+
+    # Throwaway Postgres for the integration tests (tests/testUtils.js hits real tables).
+    # Matches docker-compose: postgres:16-alpine. Trust auth = no credential to hardcode;
+    # the container only lives for this job and is reachable only from this runner.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: content_db
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres@localhost:5432/content_db
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '20'   # same as Dockerfile node:20-alpine (IRD-006), not the laptop's v24
           cache: 'npm'
       - run: npm ci
+      - run: npm run migrate
       - run: npm test
