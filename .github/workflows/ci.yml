@@ -107,7 +107,7 @@ jobs:
           wait: 120s
 
       - name: Create Secrets (random values, cluster dies with the job)
-        run: docs/k8s/create-secrets.sh
+        run: bash docs/k8s/create-secrets.sh   # committed as 100644 (no +x) in docs
 
       - name: Let the cluster pull from GHCR
         env:
