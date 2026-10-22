@@ -1,5 +1,14 @@
 name: CI
-on: [push, workflow_dispatch]
+on:
+  pull_request:              # PR checks test the merge result; required by "Protect main"
+  push:
+    branches: [main]         # post-merge run; unfiltered push + pull_request = 2 runs per commit
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # a new PR push cancels the superseded run; main runs (deploys) always finish
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
