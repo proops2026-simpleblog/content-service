@@ -80,3 +80,92 @@ jobs:
           tags: ${{ steps.meta.outputs.image }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [build-image]
+    permissions:
+      contents: read
+      packages: read           # pull the image from GHCR inside kind
+    defaults:
+      run:
+        shell: bash            # -eo pipefail (plain run: is bash -e only)
+    env:
+      IMAGE: ${{ needs.build-image.outputs.image }}
+      NS: blogcms
+    steps:
+      # Manifests live in the docs repo (IRD-007), not here.
+      - uses: actions/checkout@v7
+        with:
+          repository: proops2026-simpleblog/docs
+          path: docs
+
+      - uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        with:
+          cluster_name: ci-${{ github.run_id }}
+          wait: 120s
+
+      - name: Create Secrets (random values, cluster dies with the job)
+        run: docs/k8s/create-secrets.sh
+
+      - name: Let the cluster pull from GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          kubectl create secret docker-registry ghcr-pull -n "$NS" \
+            --docker-server=ghcr.io --docker-username="$GITHUB_ACTOR" \
+            --docker-password="$GHCR_TOKEN" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl patch serviceaccount default -n "$NS" \
+            -p '{"imagePullSecrets":[{"name":"ghcr-pull"}]}'
+
+      # CI overlay = base + this commit's image, same shape as overlays/eks.
+      # Only postgres + content-service run; the other apps are removed.
+      - name: Build CI overlay
+        run: |
+          mkdir -p docs/k8s/overlays/ci
+          cat > docs/k8s/overlays/ci/kustomization.yaml <<YAML
+          apiVersion: kustomize.config.k8s.io/v1beta1
+          kind: Kustomization
+          resources:
+            - ../../base
+          images:
+            - name: content-service
+              newName: ${IMAGE%:*}
+              newTag: "${IMAGE##*:}"
+          patches:
+            - target: { kind: Deployment, name: content-service }
+              patch: |-
+                - op: replace
+                  path: /spec/template/spec/containers/0/imagePullPolicy
+                  value: IfNotPresent
+            - target: { kind: Deployment, name: (user-service|gateway|frontend) }
+              patch: |-
+                \$patch: delete
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata: { name: unused }
+          YAML
+          kubectl kustomize docs/k8s/overlays/ci | grep -E '^kind: Deployment|image:'
+
+      - name: Apply manifests
+        run: kubectl apply -k docs/k8s/overlays/ci
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/postgres -n "$NS" --timeout=120s
+          kubectl rollout status deployment/content-service -n "$NS" --timeout=180s
+
+      - name: Show running image (evidence)
+        run: |
+          kubectl get pods -n "$NS" -o wide
+          kubectl describe pod -n "$NS" -l app=content-service | grep -E '^Name:|Image:|Status:'
+          kubectl get pods -n "$NS" -l app=content-service \
+            -o jsonpath='{range .items[*]}{.spec.containers[0].image}{"\n"}{end}' | grep -qx "$IMAGE"
+
+      - name: Diagnose (only on failure)
+        if: failure()
+        run: |
+          kubectl get pods,events -n "$NS" --sort-by=.lastTimestamp || true
+          kubectl describe pod -n "$NS" -l app=content-service || true
+          kubectl logs -n "$NS" -l app=content-service --all-containers --tail=50 || true
