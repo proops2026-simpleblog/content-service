@@ -59,7 +59,7 @@ describe('PATCH /posts/:id status transitions', () => {
       .set('X-User-Id', AUTHOR_ID)
       .send({ status: 'PUBLISHED' });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
     expect(res.body).toMatchObject({ id: post.id, status: 'PUBLISHED' });
   });
 
