@@ -1,16 +1,21 @@
 # syntax=docker/dockerfile:1
 
 # ---------- Builder stage ----------
-# Installs full dependency tree (incl. devDependencies) in an isolated
-# layer so the final runtime image never contains build tooling.
+# Installs production dependencies exactly as pinned in package-lock.json
+# (IRD-006 §4: lockfile-exact `npm ci --omit=dev`). No build step exists,
+# so dev dependencies are never installed in the image.
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm install --include=dev
+# Lockfile is required, not optional: `npm ci` fails if it is missing or
+# out of sync with package.json instead of silently resolving new versions.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
-COPY . .
+COPY src ./src
+COPY migrations ./migrations
+COPY knexfile.js ./knexfile.js
 
 # ---------- Runtime stage ----------
 FROM node:20-alpine AS runtime
@@ -18,11 +23,9 @@ FROM node:20-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
-# Production-only dependencies (no dev deps in the final image).
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev && npm cache clean --force
-
-# Application source + migrations, copied from the builder stage.
+# Only prod node_modules, source and migrations, copied from the builder.
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json ./
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/knexfile.js ./knexfile.js
