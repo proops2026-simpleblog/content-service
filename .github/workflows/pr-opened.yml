@@ -5,6 +5,10 @@ on:
     branches: [main]
     types: [opened, synchronize]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   app-ci:
     uses: proops2026-simpleblog/proops2026-cicd-platform/.github/workflows/reusable-app-ci.yml@v1
