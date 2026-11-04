@@ -1,0 +1,15 @@
+name: PR Merged — App CI + Push
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  app-ci:
+    uses: proops2026-simpleblog/proops2026-cicd-platform/.github/workflows/reusable-app-ci.yml@v1
+    with:
+      image-name: proops2026-simpleblog/content-service
+      image-tag: ${{ github.sha }}
+      push-image: true
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
