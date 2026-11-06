@@ -1,4 +1,4 @@
-name: PR Merged — App CI + Push
+name: Merge — Build + Deploy Dev
 
 on:
   push:
@@ -9,11 +9,19 @@ permissions:
   packages: write
 
 jobs:
-  app-ci:
-    uses: proops2026-simpleblog/proops2026-cicd-platform/.github/workflows/reusable-app-ci.yml@v1
+  build:
+    uses: proops2026-simpleblog/proops2026-cicd-platform/.github/workflows/reusable-build.yml@v2
     with:
       image-name: proops2026-simpleblog/content-service
-      image-tag: ${{ github.sha }}
-      push-image: true
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  deploy-dev:
+    needs: build
+    uses: proops2026-simpleblog/proops2026-cicd-platform/.github/workflows/reusable-deploy.yml@v2
+    with:
+      image-tag: ${{ needs.build.outputs.image-tag }}
+      environment: dev
+      image-name: proops2026-simpleblog/content-service
+      service-name: content-service
+    secrets: inherit
