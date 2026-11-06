@@ -1,0 +1,22 @@
+name: Deploy Production (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: "Full commit SHA to deploy to PRODUCTION (verify it passed staging)"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    uses: proops2026-simpleblog/proops2026-cicd-platform/.github/workflows/reusable-deploy.yml@v2
+    with:
+      image-tag: ${{ inputs.image-tag }}
+      environment: prod
+      image-name: proops2026-simpleblog/content-service
+      service-name: content-service
+    secrets: inherit
