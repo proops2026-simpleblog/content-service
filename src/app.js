@@ -12,7 +12,11 @@ app.use(express.json());
 app.use(attachUser);
 
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', service: 'content-service' });
+  res.status(200).json({
+    status: 'ok',
+    service: 'content-service',
+    uptimeSeconds: Math.floor(process.uptime()),
+  });
 });
 
 app.use('/posts', postsRouter);
