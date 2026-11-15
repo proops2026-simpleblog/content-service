@@ -16,6 +16,7 @@ app.get('/health', (req, res) => {
     status: 'ok',
     service: 'content-service',
     uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
   });
 });
 

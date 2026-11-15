@@ -7,7 +7,7 @@ afterAll(async () => {
 });
 
 describe('GET /health', () => {
-  it('returns ok with service name and uptime', async () => {
+  it('returns ok with service name, uptime and timestamp', async () => {
     const res = await request(app).get('/health');
 
     expect(res.status).toBe(200);
@@ -15,5 +15,6 @@ describe('GET /health', () => {
     expect(res.body.service).toBe('content-service');
     expect(Number.isInteger(res.body.uptimeSeconds)).toBe(true);
     expect(res.body.uptimeSeconds).toBeGreaterThanOrEqual(0);
+    expect(new Date(res.body.timestamp).toISOString()).toBe(res.body.timestamp);
   });
 });
